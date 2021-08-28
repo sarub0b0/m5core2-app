@@ -65,7 +65,8 @@ void init_wifi() {
     m5.lcd.print(".");
     delay(1000);
     i++;
-    if (i == 10) m5.lcd.print("\nConnect failed");
+    if (i == 10)
+      m5.lcd.print("\nConnect failed");
   }
 
   m5.lcd.println("\nWiFi connected");
@@ -140,13 +141,9 @@ int fetch_and_save_himawari_real_time_image() {
   strftime(time, 5, "%0H%0M", &tm);
 
   snprintf(
-      url,
-      74,
+      url, 74,
       "https://www.data.jma.go.jp/mscweb/data/himawari/img/%s/%s_%s_%s.jpg",
-      area.c_str(),
-      area.c_str(),
-      band.c_str(),
-      time);
+      area.c_str(), area.c_str(), band.c_str(), time);
 
   dprintf("[GET] %s\n", url);
 
@@ -165,7 +162,7 @@ int fetch_and_save_himawari_real_time_image() {
       int len = http.getSize();
       dprintf("Body [%d]\n", len);
 
-      satellite_image.ptr = (uint8_t *) ps_realloc(satellite_image.ptr, len);
+      satellite_image.ptr = (uint8_t *)ps_realloc(satellite_image.ptr, len);
       satellite_image.len = len;
       memset(satellite_image.ptr, 0, len);
 
@@ -181,8 +178,8 @@ int fetch_and_save_himawari_real_time_image() {
       while (http.connected() && read_len < len) {
         int sz = stream->available();
         if (0 < sz) {
-          int l = stream->readBytes(
-              (uint8_t *) (satellite_image.ptr + read_len), sz);
+          int l = stream->readBytes((uint8_t *)(satellite_image.ptr + read_len),
+                                    sz);
           read_len += l;
           dprintf("HTTP read: %d/%d\n", read_len, len);
         }
@@ -204,15 +201,8 @@ void render_himawari() {
   int ret = fetch_and_save_himawari_real_time_image();
 
   if (ret == 0) {
-    m5.lcd.drawJpg((const uint8_t *) satellite_image.ptr,
-                   satellite_image.len,
-                   0,
-                   0,
-                   m5.lcd.width(),
-                   m5.lcd.height(),
-                   50,
-                   0,
-                   JPEG_DIV_2);
+    m5.lcd.drawJpg((const uint8_t *)satellite_image.ptr, satellite_image.len, 0,
+                   0, m5.lcd.width(), m5.lcd.height(), 50, 0, JPEG_DIV_2);
   }
 
   delay(1000);
