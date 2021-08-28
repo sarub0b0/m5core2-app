@@ -15,6 +15,8 @@
 
 MHZ19 mhz19(13, 14, 2);
 
+LocalTime local_time;
+
 void draw_center_center_string(char *str) {
   int sw = m5.lcd.textWidth(str);
   int sh = m5.lcd.fontHeight();
@@ -49,13 +51,6 @@ void render_co2ppm() {
   char str[9] = {0};
   snprintf(str, 9, "%4d ppm", ppm);
   draw_center_center_string(str);
-}
-
-void render_time() {
-  m5.lcd.setCursor(0, 0);
-  m5.lcd.setTextSize(2);
-  m5.lcd.setTextColor(WHITE, BLACK);
-  m5.lcd.println(&timeinfo, SHORT_DATETIME_FORMAT);
 }
 
 void init_wifi() {
@@ -143,7 +138,7 @@ int fetch_and_save_himawari_real_time_image() {
   char time[4] = {0};
   char url[74] = {0};
 
-  struct tm tm = timeinfo;
+  struct tm tm = local_time.timeinfo();
   tm.tm_min = (tm.tm_min / 10) * 10;
 
   int new_himawari_time = (tm.tm_hour * 100) + tm.tm_min;
@@ -234,17 +229,6 @@ void render_himawari() {
   delay(1000);
 }
 
-void task_local_time(void *arg) {
-  while (true) {
-    if (update_local_time(&timeinfo) < 0) {
-      dprintln("Can't get local time");
-    }
-
-    delay(500);
-  }
-}
-#define RETRY_COUNT 5
-
 void task_co2ppm(void *arg) {
   while (true) {
     co2ppm = mhz19.read_co2ppm();
@@ -253,15 +237,11 @@ void task_co2ppm(void *arg) {
 }
 
 void IRAM_ATTR on_timer_local_time() {
-  if (update_local_time(&timeinfo) < 0) {
-    dprintln("Can't get local time");
-    return;
-  }
-
   m5.lcd.setCursor(0, 0);
   m5.lcd.setTextSize(2);
   m5.lcd.setTextColor(WHITE, BLACK);
-  m5.lcd.println(&timeinfo, SHORT_DATETIME_FORMAT);
+  struct tm tm = local_time.timeinfo();
+  m5.lcd.println(&tm, SHORT_DATETIME_FORMAT);
 }
 
 hw_timer_t *timer = NULL;
@@ -275,12 +255,9 @@ void setup() {
   mhz19.begin();
 
   init_wifi();
-  init_time();
   init_http();
 
-  //   xTaskCreatePinnedToCore(task_local_time, "Local Time", 8192, NULL, 1,
-  //   NULL,
-  //                           1);
+  local_time.begin();
 
   xTaskCreatePinnedToCore(task_co2ppm, "CO2 ppm", 8192, NULL, 1, NULL, 1);
 
