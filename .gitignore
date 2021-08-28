@@ -9,5 +9,4 @@
 !.vscode/extensions.json
 *.code-workspace
 .env
-.clang-format
 .tmp
