@@ -14,7 +14,7 @@ const uint8_t read_co2_command[MHZ19_REQUEST_LENGTH] = {
     0xff, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79};
 
 class MHZ19 {
-public:
+ public:
   MHZ19(int8_t rx_pin, int8_t tx_pin, int uart_nr) : serial_(uart_nr) {
     rx_pin_ = rx_pin;
     tx_pin_ = tx_pin;
@@ -73,7 +73,7 @@ public:
     }
   }
 
-private:
+ private:
   HardwareSerial serial_;
 
   int8_t rx_pin_;
