@@ -63,8 +63,9 @@ void init_wifi() {
     m5.lcd.print(".");
     delay(1000);
     i++;
-    if (i == 10)
+    if (i == 10) {
       m5.lcd.print("\nConnect failed");
+    }
   }
 
   m5.lcd.println("\nWiFi connected");
