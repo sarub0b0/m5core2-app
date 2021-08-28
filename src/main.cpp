@@ -69,24 +69,13 @@ void init_wifi() {
   }
 
   m5.lcd.println("\nWiFi connected");
-  m5.lcd.printf("IP address: %s", WiFi.localIP().toString().c_str());
+
+  m5.lcd.printf("SSID: %s\n", WiFi.SSID().c_str());
+  m5.lcd.printf("IP address: %s\n", WiFi.localIP().toString().c_str());
 
   delay(1000);
 
   m5.lcd.fillScreen(BLACK);
-}
-
-void render_wifi() {
-  if (WiFi.status() == WL_CONNECTED) {
-    m5.lcd.print("WiFi connected\n\nSSID:");
-    m5.lcd.println(WiFi.SSID());
-    m5.lcd.print("RSSI: ");
-    m5.lcd.println(WiFi.RSSI());
-    m5.lcd.print("IP address: ");
-    m5.lcd.println(WiFi.localIP());
-  } else {
-    m5.lcd.print(".");
-  }
 }
 
 const char *ca = R"(-----BEGIN CERTIFICATE-----
@@ -252,9 +241,10 @@ hw_timer_t *timer = NULL;
 void setup() {
   m5.begin();
 
+  init_wifi();
+
   mhz19.begin();
 
-  init_wifi();
   init_http();
 
   local_time.begin();
