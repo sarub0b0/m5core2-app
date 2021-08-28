@@ -3,15 +3,14 @@
 #include <M5Core2.h>
 
 #ifdef DEBUG
-HardwareSerial console(0);  // DEBUG用
 
-#define dprintf(msg...)  \
-  do {                   \
-    console.printf(msg); \
+#define dprintf(msg...) \
+  do {                  \
+    Serial.printf(msg); \
   } while (0)
 
-#define dprintln(msg) console.println(msg)
-#define dprint(msg) console.print(msg)
+#define dprintln(msg) Serial.println(msg)
+#define dprint(msg) Serial.print(msg)
 
 #else
 

@@ -274,9 +274,6 @@ void setup() {
 
   mhz19.begin();
 
-#ifdef DEBUG
-  console.begin(9600);
-#endif
   init_wifi();
   init_time();
   init_http();
