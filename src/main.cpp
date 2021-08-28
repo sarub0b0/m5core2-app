@@ -15,8 +15,6 @@
 
 MHZ19 mhz19(13, 14, 2);
 
-LocalTime local_time;
-
 void draw_center_center_string(char *str) {
   int sw = m5.lcd.textWidth(str);
   int sh = m5.lcd.fontHeight();

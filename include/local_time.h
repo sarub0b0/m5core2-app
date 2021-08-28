@@ -44,3 +44,5 @@ class LocalTime {
   bool is_active_;
   struct tm tm_;
 };
+
+LocalTime local_time;
