@@ -53,25 +53,39 @@ int fetch_and_save_himawari_real_time_image() {
   String area = "jpn";
   String band = "b13";
 
-  char time[4] = {0};
+  char str_time[5] = {0};
   char url[74] = {0};
 
-  struct tm tm = local_time.timeinfo();
-  tm.tm_min = (tm.tm_min / 10) * 10;
+  time_t now = 0;
+  time(&now);
 
-  int new_himawari_time = (tm.tm_hour * 100) + tm.tm_min;
+  // ひまわりの衛星画像が準備されるまで２０分近くかかるため30分ほど引いておく
+  now = ((now - 1800) / 600) * 600;
+
+  struct tm gm = *gmtime(&now);
+
+  int new_himawari_time = (gm.tm_hour * 100) + gm.tm_min;
+
+  if (new_himawari_time < 0) {
+    dprintln("Can't get local time");
+    return -1;
+  }
 
   if (current_himawari_time == new_himawari_time) {
     dprintf("exists image %04d.jpg\n", current_himawari_time);
     return 1;
   }
 
-  strftime(time, 5, "%0H%0M", &tm);
+  strftime(str_time, 5, "%H%M", &gm);
 
   snprintf(
-      url, 74,
+      url,
+      74,
       "https://www.data.jma.go.jp/mscweb/data/himawari/img/%s/%s_%s_%s.jpg",
-      area.c_str(), area.c_str(), band.c_str(), time);
+      area.c_str(),
+      area.c_str(),
+      band.c_str(),
+      str_time);
 
   dprintf("[GET] %s\n", url);
 
@@ -90,7 +104,7 @@ int fetch_and_save_himawari_real_time_image() {
       int len = http.getSize();
       dprintf("Body [%d]\n", len);
 
-      satellite_image.ptr = (uint8_t *)ps_realloc(satellite_image.ptr, len);
+      satellite_image.ptr = (uint8_t *) ps_realloc(satellite_image.ptr, len);
       satellite_image.len = len;
       memset(satellite_image.ptr, 0, len);
 
@@ -106,8 +120,8 @@ int fetch_and_save_himawari_real_time_image() {
       while (http.connected() && read_len < len) {
         int sz = stream->available();
         if (0 < sz) {
-          int l = stream->readBytes((uint8_t *)(satellite_image.ptr + read_len),
-                                    sz);
+          int l = stream->readBytes(
+              (uint8_t *) (satellite_image.ptr + read_len), sz);
           read_len += l;
           dprintf("HTTP read: %d/%d\n", read_len, len);
         }
