@@ -1,8 +1,11 @@
 # ENVIRONMENT :=  m5stack-core2
 ENVIRONMENT :=  m5stack-core2-debug
 
-# PIO := C:/Users/kosay/.platformio/penv/Scripts/platformio.exe
-PIO := /mnt/c/Users/kosay/.platformio/penv/Scripts/platformio.exe
+ifeq ($(OS),Windows_NT)
+	PIO := C:/Users/kosay/.platformio/penv/Scripts/platformio.exe
+else
+	PIO := /mnt/c/Users/kosay/.platformio/penv/Scripts/platformio.exe
+endif
 
 all:
 	$(PIO) run --environment $(ENVIRONMENT)
