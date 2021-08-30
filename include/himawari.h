@@ -6,6 +6,7 @@
 
 #include "local_time.h"
 #include "macro.h"
+#include "util.h"
 
 const char *ca = R"(-----BEGIN CERTIFICATE-----
 MIIDrzCCApegAwIBAgIQCDvgVpBCRrGhdWrJWZHHSjANBgkqhkiG9w0BAQUFADBh
@@ -110,13 +111,20 @@ int fetch_and_save_himawari_real_time_image(bool redraw) {
 
       WiFiClient *stream = http.getStreamPtr();
       int read_len = 0;
+
+      char buf[128] = {0};
       while (http.connected() && read_len < len) {
         int sz = stream->available();
         if (0 < sz) {
           int l = stream->readBytes(
               (uint8_t *) (satellite_image.ptr + read_len), sz);
+
           read_len += l;
+
           dprintf("HTTP read: %d/%d\n", read_len, len);
+          snprintf(buf, 128, "HTTP read: %d/%d\n", read_len, len);
+          draw_center_center_string(buf);
+
         }
       }
 
