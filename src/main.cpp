@@ -208,25 +208,6 @@ void task_localtime(void *arg) {
   }
 }
 
-void task_localtime(void *arg) {
-  while (true) {
-    struct tm tm = localtime();
-
-    if (mutex && xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
-      m5.lcd.setCursor(0, 0);
-      m5.lcd.setTextSize(2);
-      m5.lcd.setTextColor(WHITE, BLACK);
-      m5.lcd.println(&tm, SHORT_DATETIME_FORMAT);
-
-      xSemaphoreGive(mutex);
-    } else {
-      dprintln(
-          "on_timer_local_time: mutex == NULL or xSemaphoreTake is failure");
-    }
-
-    delay(200);
-  }
-}
 Apps apps;
 void task_render(void *arg) {
   while (true) {
