@@ -11,11 +11,9 @@
 
 const char *ntp_server = "ntp.jst.mfeed.ad.jp";
 
-const int daylight_offset_sec = 0;
-
 void init_localtime() {
   if (WiFi.status() == WL_CONNECTED) {
-    configTzTime("JST-9", ntp_server);
+    configTime(9 * 3600, 0, ntp_server);
   } else {
     m5.lcd.println("Wi-Fi status is not connected");
     dprintln("Wi-Fi status is not connected");
