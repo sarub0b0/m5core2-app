@@ -49,7 +49,7 @@ struct image {
 
 struct image satellite_image = {};
 
-int fetch_and_save_himawari_real_time_image() {
+int fetch_and_save_himawari_real_time_image(bool redraw) {
   String area = "jpn";
   String band = "b13";
 
@@ -71,7 +71,7 @@ int fetch_and_save_himawari_real_time_image() {
     return -1;
   }
 
-  if (current_himawari_time == new_himawari_time) {
+  if (!redraw && current_himawari_time == new_himawari_time) {
     dprintf("exists image %04d.jpg\n", current_himawari_time);
     return 1;
   }
