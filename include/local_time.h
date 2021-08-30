@@ -18,7 +18,6 @@ const int daylight_offset_sec = 0;
 class LocalTime {
  public:
   LocalTime() {
-    is_active_ = false;
   }
   ~LocalTime() {
   }
@@ -26,7 +25,6 @@ class LocalTime {
   void begin() {
     if (WiFi.status() == WL_CONNECTED) {
       configTime(gmt_offset_sec, daylight_offset_sec, ntp_server);
-      is_active_ = true;
     } else {
       m5.lcd.println("Wi-Fi status is not connected");
     }
@@ -35,14 +33,13 @@ class LocalTime {
   }
 
   struct tm timeinfo() {
-    if (is_active_ && !getLocalTime(&tm_)) {
+    if (!getLocalTime(&tm_)) {
       m5.lcd.println("Failed to obtain time");
     }
     return tm_;
   }
 
  private:
-  bool is_active_;
   struct tm tm_;
 };
 
