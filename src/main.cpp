@@ -129,30 +129,6 @@ class RenderCO2 : public Render {
 
 int RenderCO2::co2ppm = 0;
 
-// void render_co2ppm() {
-//   // diff check
-//   int ppm = co2ppm;
-
-//   if (prev_co2ppm == ppm) {
-//     return;
-//   }
-//   dprintf("co2ppm update: %d\n", ppm);
-//   prev_co2ppm = ppm;
-
-//   if (0 <= ppm && ppm <= 1000) {
-//     m5.lcd.setTextColor(WHITE, BLACK);
-//   } else if (1000 < ppm && ppm <= 1500) {
-//     m5.lcd.setTextColor(ORANGE, BLACK);
-//   } else {
-//     m5.lcd.setTextColor(RED, BLACK);
-//   }
-
-//   m5.lcd.setTextSize(3);
-//   char str[9] = {0};
-//   snprintf(str, 9, "%4d ppm", ppm);
-//   draw_center_center_string(str);
-// }
-
 void init_wifi() {
   m5.lcd.setTextSize(2);
 
@@ -203,22 +179,6 @@ class RenderHimawari : public Render {
 
  private:
 };
-
-// void render_himawari() {
-//   int ret = fetch_and_save_himawari_real_time_image();
-
-//   if (ret == 0) {
-//     m5.lcd.drawJpg((const uint8_t *) satellite_image.ptr,
-//                    satellite_image.len,
-//                    0,
-//                    0,
-//                    m5.lcd.width(),
-//                    m5.lcd.height(),
-//                    50,
-//                    0,
-//                    JPEG_DIV_2);
-//   }
-// }
 
 void task_co2ppm(void *arg) {
   while (true) {
