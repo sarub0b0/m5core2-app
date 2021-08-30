@@ -13,7 +13,9 @@
 #include "local_time.h"
 #include "macro.h"
 #include "util.h"
+#include "mutex.h"
 
+SemaphoreHandle_t mutex = nullptr;
 
 MHZ19 mhz19(13, 14, 2);
 
@@ -104,18 +106,25 @@ class RenderCO2 : public Render {
     dprintf("co2ppm update: %d\n", ppm);
     prev_ppm_ = ppm;
 
-    if (0 <= ppm && ppm <= 1000) {
-      m5.lcd.setTextColor(WHITE, BLACK);
-    } else if (1000 < ppm && ppm <= 1500) {
-      m5.lcd.setTextColor(ORANGE, BLACK);
-    } else {
-      m5.lcd.setTextColor(RED, BLACK);
-    }
+    if (mutex && xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
+      if (0 <= ppm && ppm <= 1000) {
+        m5.lcd.setTextColor(WHITE, BLACK);
+      } else if (1000 < ppm && ppm <= 1500) {
+        m5.lcd.setTextColor(ORANGE, BLACK);
+      } else {
+        m5.lcd.setTextColor(RED, BLACK);
+      }
 
-    m5.lcd.setTextSize(3);
-    char str[9] = {0};
-    snprintf(str, 9, "%4d ppm", ppm);
-    draw_center_center_string(str);
+      m5.lcd.setTextSize(3);
+      char str[9] = {0};
+      snprintf(str, 9, "%4d ppm", ppm);
+      draw_center_center_string(str);
+
+      xSemaphoreGive(mutex);
+    } else {
+      dprintf(
+          "RenderCO2::render: mutex == NULL or xSemaphoreTake is failure");
+    }
   }
 };
 
@@ -179,14 +188,45 @@ void task_co2ppm(void *arg) {
   }
 }
 
-void IRAM_ATTR on_timer_local_time() {
-  m5.lcd.setCursor(0, 0);
-  m5.lcd.setTextSize(2);
-  m5.lcd.setTextColor(WHITE, BLACK);
-  struct tm tm = local_time.timeinfo();
-  m5.lcd.println(&tm, SHORT_DATETIME_FORMAT);
+void task_localtime(void *arg) {
+  while (true) {
+    struct tm tm = localtime();
+
+    if (mutex && xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
+      m5.lcd.setCursor(0, 0);
+      m5.lcd.setTextSize(2);
+      m5.lcd.setTextColor(WHITE, BLACK);
+      m5.lcd.println(&tm, SHORT_DATETIME_FORMAT);
+
+      xSemaphoreGive(mutex);
+    } else {
+      dprintln(
+          "on_timer_local_time: mutex == NULL or xSemaphoreTake is failure");
+    }
+
+    delay(200);
+  }
 }
 
+void task_localtime(void *arg) {
+  while (true) {
+    struct tm tm = localtime();
+
+    if (mutex && xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
+      m5.lcd.setCursor(0, 0);
+      m5.lcd.setTextSize(2);
+      m5.lcd.setTextColor(WHITE, BLACK);
+      m5.lcd.println(&tm, SHORT_DATETIME_FORMAT);
+
+      xSemaphoreGive(mutex);
+    } else {
+      dprintln(
+          "on_timer_local_time: mutex == NULL or xSemaphoreTake is failure");
+    }
+
+    delay(200);
+  }
+}
 Apps apps;
 void task_render(void *arg) {
   while (true) {
@@ -200,7 +240,13 @@ hw_timer_t *timer = NULL;
     MH-Z19 CO2 sensor  setup
   ----------------------------------------------------------*/
 void setup() {
+
   m5.begin();
+
+  mutex = xSemaphoreCreateMutex();
+  if (!mutex) {
+    dprintln("Can't create mutex");
+  }
 
   init_wifi();
 
@@ -208,16 +254,12 @@ void setup() {
 
   init_http();
 
-  local_time.begin();
+  init_localtime();
 
+  xTaskCreatePinnedToCore(
+      task_localtime, "LocalTime", 8192, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(task_co2ppm, "CO2 ppm", 8192, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(task_render, "Render", 8192, NULL, 1, NULL, 1);
-
-  timer = timerBegin(0, 80, true);
-
-  timerAttachInterrupt(timer, on_timer_local_time, true);
-  timerAlarmWrite(timer, 500 * 1000, true);
-  timerAlarmEnable(timer);
 
   dprintf("LCD size %d:%d\n", m5.lcd.width(), m5.lcd.height());
 

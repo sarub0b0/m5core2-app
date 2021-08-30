@@ -11,36 +11,21 @@
 
 const char *ntp_server = "ntp.jst.mfeed.ad.jp";
 
-const long gmt_offset_sec = 9 * 3600;
-
 const int daylight_offset_sec = 0;
 
-class LocalTime {
- public:
-  LocalTime() {
+void init_localtime() {
+  if (WiFi.status() == WL_CONNECTED) {
+    configTzTime("JST-9", ntp_server);
+  } else {
+    m5.lcd.println("Wi-Fi status is not connected");
+    dprintln("Wi-Fi status is not connected");
   }
-  ~LocalTime() {
+}
+
+struct tm localtime() {
+  struct tm tm;
+  if (!getLocalTime(&tm)) {
+    dprintln("Failed to obtain time");
   }
-
-  void begin() {
-    if (WiFi.status() == WL_CONNECTED) {
-      configTime(gmt_offset_sec, daylight_offset_sec, ntp_server);
-    } else {
-      m5.lcd.println("Wi-Fi status is not connected");
-    }
-
-    return;
-  }
-
-  struct tm timeinfo() {
-    if (!getLocalTime(&tm_)) {
-      m5.lcd.println("Failed to obtain time");
-    }
-    return tm_;
-  }
-
- private:
-  struct tm tm_;
-};
-
-LocalTime local_time;
+  return tm;
+}

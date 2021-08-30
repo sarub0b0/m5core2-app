@@ -7,6 +7,7 @@
 #include "local_time.h"
 #include "macro.h"
 #include "util.h"
+#include "mutex.h"
 
 const char *ca = R"(-----BEGIN CERTIFICATE-----
 MIIDrzCCApegAwIBAgIQCDvgVpBCRrGhdWrJWZHHSjANBgkqhkiG9w0BAQUFADBh
@@ -57,15 +58,17 @@ int fetch_and_save_himawari_real_time_image(bool redraw) {
   char str_time[5] = {0};
   char url[74] = {0};
 
-  time_t now = 0;
+  struct tm tm = localtime();
+
+  time_t now = mktime(&tm);
   time(&now);
 
   // ひまわりの衛星画像が準備されるまで２０分近くかかるため30分ほど引いておく
   now = ((now - 1800) / 600) * 600;
 
-  struct tm gm = *gmtime(&now);
+  gmtime_r(&now, &tm);
 
-  int new_himawari_time = (gm.tm_hour * 100) + gm.tm_min;
+  int new_himawari_time = (tm.tm_hour * 100) + tm.tm_min;
 
   if (new_himawari_time < 0) {
     dprintln("Can't get local time");
@@ -77,7 +80,7 @@ int fetch_and_save_himawari_real_time_image(bool redraw) {
     return 1;
   }
 
-  strftime(str_time, 5, "%H%M", &gm);
+  strftime(str_time, 5, "%H%M", &tm);
 
   snprintf(
       url,
@@ -122,9 +125,18 @@ int fetch_and_save_himawari_real_time_image(bool redraw) {
           read_len += l;
 
           dprintf("HTTP read: %d/%d\n", read_len, len);
-          snprintf(buf, 128, "HTTP read: %d/%d\n", read_len, len);
-          draw_center_center_string(buf);
 
+          if (mutex && xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
+            m5.lcd.setTextSize(2);
+            snprintf(buf, 128, "HTTP read: %d/%d\n", read_len, len);
+            draw_center_center_string(buf);
+
+            xSemaphoreGive(mutex);
+          } else {
+            dprintln(
+                "fetch_and_save_himawari_real_time_image: mutex == NULL or "
+                "xSemaphoreTake is failure");
+          }
         }
       }
 
@@ -139,3 +151,28 @@ int fetch_and_save_himawari_real_time_image(bool redraw) {
   http.end();
   return ret;
 }
+
+class Satellite {
+  struct image {
+    size_t len;
+    uint8_t *ptr;
+    int time;
+  };
+
+ public:
+  Satellite() {
+    is_active_ = false;
+  };
+  ~Satellite(){};
+
+  void begin() {
+    http_.setReuse(true);
+  }
+
+ private:
+  HTTPClient http_;
+
+  bool is_active_;
+
+  struct image image_;
+};
