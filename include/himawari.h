@@ -108,13 +108,6 @@ int fetch_and_save_himawari_real_time_image(bool redraw) {
       satellite_image.len = len;
       memset(satellite_image.ptr, 0, len);
 
-      multi_heap_info_t info;
-
-      heap_caps_get_info(&info, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-
-      dprintf("MALLOC free size %d\n", info.total_free_bytes);
-      dprintf("MALLOC alloc size %d\n", info.total_allocated_bytes);
-
       WiFiClient *stream = http.getStreamPtr();
       int read_len = 0;
       while (http.connected() && read_len < len) {
