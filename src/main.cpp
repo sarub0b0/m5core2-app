@@ -48,6 +48,10 @@ class Apps {
   }
 
   void render() {
+    if (renders_.empty()) {
+      dprintln("Apps is empty");
+      return;
+    }
 
     if (need_clear_) {
       lcd_clear();
