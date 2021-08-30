@@ -18,8 +18,9 @@ class MHZ19 {
   MHZ19(int8_t rx_pin, int8_t tx_pin, int uart_nr) : serial_(uart_nr) {
     rx_pin_ = rx_pin;
     tx_pin_ = tx_pin;
-  };
-  ~MHZ19(){};
+  }
+  ~MHZ19() {
+  }
 
   void begin() {
     serial_.begin(9600, SERIAL_8N1, rx_pin_, tx_pin_);

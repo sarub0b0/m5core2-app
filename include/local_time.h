@@ -19,8 +19,9 @@ class LocalTime {
  public:
   LocalTime() {
     is_active_ = false;
-  };
-  ~LocalTime(){};
+  }
+  ~LocalTime() {
+  }
 
   void begin() {
     if (WiFi.status() == WL_CONNECTED) {
@@ -31,7 +32,7 @@ class LocalTime {
     }
 
     return;
-  };
+  }
 
   struct tm timeinfo() {
     if (is_active_ && !getLocalTime(&tm_)) {
