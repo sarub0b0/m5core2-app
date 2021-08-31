@@ -162,6 +162,7 @@ class Satellite {
         if (mutex && xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
 
           m5.lcd.setTextSize(2);
+          m5.lcd.setTextColor(WHITE, BLACK);
           snprintf(buf, 32, "%d/%d Bytes\n", read_len_sum, data_size);
           draw_center_center_string(buf);
 
