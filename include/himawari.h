@@ -35,16 +35,12 @@ CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=
 #define URL_LEN 74
 
 class Satellite {
-  struct image {
-    size_t size;
-    uint8_t *ptr;
-    int time;
-  };
-
  public:
   Satellite() {
     is_active_ = false;
-    image_ = {0, 0, 0};
+    image_ptr_ = nullptr;
+    image_size_ = 0;
+    image_time_ = 0;
   };
   ~Satellite(){};
 
@@ -60,8 +56,8 @@ class Satellite {
       return false;
     }
 
-    if (image_.time == new_time) {
-      dprintf("exists image %04d.jpg\n", image_.time);
+    if (image_time_ == new_time) {
+      dprintf("exists image %04d.jpg\n", image_time_);
       return false;
     }
 
@@ -70,7 +66,6 @@ class Satellite {
 
   int fetch() {
     int time = image_time();
-
     char url[URL_LEN] = {0};
 
     image_url(time, url);
@@ -86,43 +81,9 @@ class Satellite {
 
       if (status_code == HTTP_CODE_OK) {
 
-        int len = http_.getSize();
-        dprintf("Body [%d]\n", len);
+        image_download(&http_, &image_ptr_, &image_size_);
 
-        image_.ptr = (uint8_t *) ps_realloc(image_.ptr, len);
-        image_.size = len;
-        memset(image_.ptr, 0, len);
-
-        WiFiClient *stream = http_.getStreamPtr();
-        int read_len = 0;
-
-        char buf[128] = {0};
-        while (http_.connected() && read_len < len) {
-          int sz = stream->available();
-          if (0 < sz) {
-            int l =
-                stream->readBytes((uint8_t *) (image_.ptr + read_len), sz);
-
-            read_len += l;
-
-            dprintf("HTTP read: %d/%d\n", read_len, len);
-
-            if (mutex && xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
-              m5.lcd.setTextSize(2);
-              snprintf(buf, 128, "HTTP read: %d/%d\n", read_len, len);
-              draw_center_center_string(buf);
-
-              xSemaphoreGive(mutex);
-            } else {
-              dprintln(
-                  "fetch_and_save_himawari_real_time_image: mutex == NULL or "
-                  "xSemaphoreTake is failure");
-            }
-          }
-        }
-
-        dprintln("HTTP read done");
-        image_.time = time;
+        image_time_ = time;
 
         ret = 0;
       }
@@ -135,19 +96,20 @@ class Satellite {
   }
 
   const uint8_t *image_ptr() {
-    return image_.ptr;
+    return image_ptr_;
   }
 
   size_t image_size() {
-    return image_.size;
+    return image_size_;
   }
 
  private:
   HTTPClient http_;
-
   bool is_active_;
 
-  struct image image_;
+  int image_time_;
+  uint8_t *image_ptr_;
+  size_t image_size_;
 
   int image_time() {
     struct tm tm = localtime();
@@ -169,5 +131,52 @@ class Satellite {
              "https://www.data.jma.go.jp/mscweb/data/himawari/img/jpn/"
              "jpn_b13_%04d.jpg",
              time);
+  }
+
+  void image_download(HTTPClient *http,
+                      uint8_t **image_ptr,
+                      size_t *image_size) {
+    int data_size = http->getSize();
+    uint8_t *ptr = *image_ptr;
+
+    dprintf("Body [%d]\n", data_size);
+
+    ptr = (uint8_t *) ps_realloc(ptr, data_size);
+    memset(ptr, 0, data_size);
+
+    WiFiClient *stream = http->getStreamPtr();
+
+    int read_len_sum = 0;
+    char buf[32] = {0};
+    while (http->connected() && read_len_sum < data_size) {
+      int available_size = stream->available();
+
+      if (0 < available_size) {
+        int read_len = stream->readBytes((uint8_t *) (ptr + read_len_sum),
+                                         available_size);
+
+        read_len_sum += read_len;
+
+        dprintf("HTTP read: %d/%d Bytes\n", read_len_sum, data_size);
+
+        if (mutex && xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
+
+          m5.lcd.setTextSize(2);
+          snprintf(buf, 32, "%d/%d Bytes\n", read_len_sum, data_size);
+          draw_center_center_string(buf);
+
+          xSemaphoreGive(mutex);
+        } else {
+          dprintln(
+              "fetch_and_save_himawari_real_time_image: mutex == NULL or "
+              "xSemaphoreTake is failure");
+        }
+      }
+    }
+
+    dprintln("HTTP read done");
+
+    *image_ptr = ptr;
+    *image_size = data_size;
   }
 };
