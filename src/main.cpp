@@ -18,6 +18,7 @@
 SemaphoreHandle_t mutex = nullptr;
 
 MHZ19 mhz19(13, 14, 2);
+Satellite satellite;
 
 class Render {
  public:
@@ -163,18 +164,21 @@ class RenderHimawari : public Render {
   }
 
   void render(bool redraw) {
-    int ret = fetch_and_save_himawari_real_time_image(redraw);
 
-    if (ret == 0) {
-      m5.lcd.drawJpg((const uint8_t *) satellite_image.ptr,
-                     satellite_image.len,
-                     0,
-                     0,
-                     m5.lcd.width(),
-                     m5.lcd.height(),
-                     50,
-                     0,
-                     JPEG_DIV_2);
+    if (redraw || satellite.need_fetch()) {
+      int ret = satellite.fetch();
+
+      if (ret == 0) {
+        m5.lcd.drawJpg((const uint8_t *) satellite.image_ptr(),
+                       satellite.image_size(),
+                       0,
+                       0,
+                       m5.lcd.width(),
+                       m5.lcd.height(),
+                       50,
+                       0,
+                       JPEG_DIV_2);
+      }
     }
   }
 
@@ -233,9 +237,9 @@ void setup() {
 
   mhz19.begin();
 
-  init_http();
-
   init_localtime();
+
+  satellite.begin();
 
   xTaskCreatePinnedToCore(
       task_localtime, "LocalTime", 8192, NULL, 1, NULL, 1);

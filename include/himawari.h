@@ -32,129 +32,11 @@ YSEY1QSteDwsOoBrp+uvFRTp2InBuThs4pFsiv9kuXclVzDAGySj4dzp30d8tbQk
 CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=
 -----END CERTIFICATE-----)";
 
-HTTPClient http;
-void init_http() {
-  http.setReuse(true);
-  return;
-}
-
-const char himawari_url[73] =
-    "https://www.data.jma.go.jp/mscweb/data/himawari/img/%s/%s_%s_%d.jpg";
-
-int current_himawari_time = 0;
-
-struct image {
-  size_t len;
-  uint8_t *ptr;
-  int time;
-};
-
-struct image satellite_image = {};
-
-int fetch_and_save_himawari_real_time_image(bool redraw) {
-  String area = "jpn";
-  String band = "b13";
-
-  char str_time[5] = {0};
-  char url[74] = {0};
-
-  struct tm tm = localtime();
-
-  time_t now = mktime(&tm);
-  time(&now);
-
-  // ひまわりの衛星画像が準備されるまで２０分近くかかるため30分ほど引いておく
-  now = ((now - 1800) / 600) * 600;
-
-  gmtime_r(&now, &tm);
-
-  int new_himawari_time = (tm.tm_hour * 100) + tm.tm_min;
-
-  if (new_himawari_time < 0) {
-    dprintln("Can't get local time");
-    return -1;
-  }
-
-  if (!redraw && current_himawari_time == new_himawari_time) {
-    dprintf("exists image %04d.jpg\n", current_himawari_time);
-    return 1;
-  }
-
-  strftime(str_time, 5, "%H%M", &tm);
-
-  snprintf(
-      url,
-      74,
-      "https://www.data.jma.go.jp/mscweb/data/himawari/img/%s/%s_%s_%s.jpg",
-      area.c_str(),
-      area.c_str(),
-      band.c_str(),
-      str_time);
-
-  dprintf("[GET] %s\n", url);
-
-  http.begin(url, ca);
-
-  int status_code = http.GET();
-
-  int ret = -1;
-
-  if (0 < status_code) {
-    dprintf("HTTP GET %d\n", status_code);
-
-    if (status_code == HTTP_CODE_OK) {
-      current_himawari_time = new_himawari_time;
-
-      int len = http.getSize();
-      dprintf("Body [%d]\n", len);
-
-      satellite_image.ptr = (uint8_t *) ps_realloc(satellite_image.ptr, len);
-      satellite_image.len = len;
-      memset(satellite_image.ptr, 0, len);
-
-      WiFiClient *stream = http.getStreamPtr();
-      int read_len = 0;
-
-      char buf[128] = {0};
-      while (http.connected() && read_len < len) {
-        int sz = stream->available();
-        if (0 < sz) {
-          int l = stream->readBytes(
-              (uint8_t *) (satellite_image.ptr + read_len), sz);
-
-          read_len += l;
-
-          dprintf("HTTP read: %d/%d\n", read_len, len);
-
-          if (mutex && xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
-            m5.lcd.setTextSize(2);
-            snprintf(buf, 128, "HTTP read: %d/%d\n", read_len, len);
-            draw_center_center_string(buf);
-
-            xSemaphoreGive(mutex);
-          } else {
-            dprintln(
-                "fetch_and_save_himawari_real_time_image: mutex == NULL or "
-                "xSemaphoreTake is failure");
-          }
-        }
-      }
-
-      dprintln("HTTP read done");
-
-      ret = 0;
-    }
-  } else {
-    dprintf("HTTP GET ERR: %s\n", http.errorToString(status_code).c_str());
-  }
-
-  http.end();
-  return ret;
-}
+#define URL_LEN 74
 
 class Satellite {
   struct image {
-    size_t len;
+    size_t size;
     uint8_t *ptr;
     int time;
   };
@@ -162,11 +44,102 @@ class Satellite {
  public:
   Satellite() {
     is_active_ = false;
+    image_ = {0, 0, 0};
   };
   ~Satellite(){};
 
   void begin() {
     http_.setReuse(true);
+  }
+
+  bool need_fetch() {
+    int new_time = image_time();
+
+    if (new_time < 0) {
+      dprintln("Can't get local time");
+      return false;
+    }
+
+    if (image_.time == new_time) {
+      dprintf("exists image %04d.jpg\n", image_.time);
+      return false;
+    }
+
+    return true;
+  }
+
+  int fetch() {
+    int time = image_time();
+
+    char url[URL_LEN] = {0};
+
+    image_url(time, url);
+
+    http_.begin(url, ca);
+
+    dprintf("[GET] %s\n", url);
+    int status_code = http_.GET();
+
+    int ret = -1;
+    if (0 < status_code) {
+      dprintf("HTTP GET %d\n", status_code);
+
+      if (status_code == HTTP_CODE_OK) {
+
+        int len = http_.getSize();
+        dprintf("Body [%d]\n", len);
+
+        image_.ptr = (uint8_t *) ps_realloc(image_.ptr, len);
+        image_.size = len;
+        memset(image_.ptr, 0, len);
+
+        WiFiClient *stream = http_.getStreamPtr();
+        int read_len = 0;
+
+        char buf[128] = {0};
+        while (http_.connected() && read_len < len) {
+          int sz = stream->available();
+          if (0 < sz) {
+            int l =
+                stream->readBytes((uint8_t *) (image_.ptr + read_len), sz);
+
+            read_len += l;
+
+            dprintf("HTTP read: %d/%d\n", read_len, len);
+
+            if (mutex && xSemaphoreTake(mutex, portMAX_DELAY) == pdTRUE) {
+              m5.lcd.setTextSize(2);
+              snprintf(buf, 128, "HTTP read: %d/%d\n", read_len, len);
+              draw_center_center_string(buf);
+
+              xSemaphoreGive(mutex);
+            } else {
+              dprintln(
+                  "fetch_and_save_himawari_real_time_image: mutex == NULL or "
+                  "xSemaphoreTake is failure");
+            }
+          }
+        }
+
+        dprintln("HTTP read done");
+        image_.time = time;
+
+        ret = 0;
+      }
+    } else {
+      dprintf("HTTP GET ERR: %s\n", http_.errorToString(status_code).c_str());
+    }
+
+    http_.end();
+    return ret;
+  }
+
+  const uint8_t *image_ptr() {
+    return image_.ptr;
+  }
+
+  size_t image_size() {
+    return image_.size;
   }
 
  private:
@@ -175,4 +148,26 @@ class Satellite {
   bool is_active_;
 
   struct image image_;
+
+  int image_time() {
+    struct tm tm = localtime();
+
+    time_t now = mktime(&tm);
+    time(&now);
+
+    // ひまわりの衛星画像が準備されるまで20分近くかかるため30分ほど引いておく
+    now = ((now - 1800) / 600) * 600;
+
+    gmtime_r(&now, &tm);
+
+    return (tm.tm_hour * 100) + tm.tm_min;
+  }
+
+  void image_url(int time, char *url) {
+    snprintf(url,
+             URL_LEN,
+             "https://www.data.jma.go.jp/mscweb/data/himawari/img/jpn/"
+             "jpn_b13_%04d.jpg",
+             time);
+  }
 };
