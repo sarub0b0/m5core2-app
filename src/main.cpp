@@ -20,6 +20,33 @@ SemaphoreHandle_t mutex = nullptr;
 MHZ19 mhz19(13, 14, 2);
 Satellite satellite;
 
+void init_wifi() {
+  m5.lcd.setTextSize(2);
+
+  WiFi.begin(str(WIFI_SSID), str(WIFI_PASSWORD));
+
+  m5.lcd.print("\nWaiting connect to WiFi...");
+
+  int i = 0;
+  while (WiFi.status() != WL_CONNECTED) {
+    m5.lcd.print(".");
+    delay(1000);
+    i++;
+    if (i == 10) {
+      m5.lcd.print("\nConnect failed");
+    }
+  }
+
+  m5.lcd.println("\nWiFi connected");
+
+  m5.lcd.printf("SSID: %s\n", WiFi.SSID().c_str());
+  m5.lcd.printf("IP address: %s\n", WiFi.localIP().toString().c_str());
+
+  delay(1000);
+
+  m5.lcd.fillScreen(BLACK);
+}
+
 class Render {
  public:
   Render(){};
@@ -126,33 +153,6 @@ class RenderCO2 : public Render {
 };
 
 int RenderCO2::co2ppm = 0;
-
-void init_wifi() {
-  m5.lcd.setTextSize(2);
-
-  WiFi.begin(str(WIFI_SSID), str(WIFI_PASSWORD));
-
-  m5.lcd.print("\nWaiting connect to WiFi...");
-
-  int i = 0;
-  while (WiFi.status() != WL_CONNECTED) {
-    m5.lcd.print(".");
-    delay(1000);
-    i++;
-    if (i == 10) {
-      m5.lcd.print("\nConnect failed");
-    }
-  }
-
-  m5.lcd.println("\nWiFi connected");
-
-  m5.lcd.printf("SSID: %s\n", WiFi.SSID().c_str());
-  m5.lcd.printf("IP address: %s\n", WiFi.localIP().toString().c_str());
-
-  delay(1000);
-
-  m5.lcd.fillScreen(BLACK);
-}
 
 class RenderHimawari : public Render {
  public:
