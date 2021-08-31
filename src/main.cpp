@@ -91,17 +91,10 @@ class RenderCO2 : public Render {
   }
 
   void render(bool redraw) {
-    render_();
-  }
-
- private:
-  int prev_ppm_;
-
-  void render_() {
     // diff check
     int ppm = co2ppm;
 
-    if (prev_ppm_ == ppm) {
+    if (!redraw && prev_ppm_ == ppm) {
       return;
     }
     dprintf("co2ppm update: %d\n", ppm);
@@ -127,6 +120,9 @@ class RenderCO2 : public Render {
           "RenderCO2::render: mutex == NULL or xSemaphoreTake is failure");
     }
   }
+
+ private:
+  int prev_ppm_;
 };
 
 int RenderCO2::co2ppm = 0;
